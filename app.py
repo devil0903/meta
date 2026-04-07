@@ -6,14 +6,15 @@ VERIFY_TOKEN = "mytoken123"
 
 @app.route('/webhook', methods=['GET', 'POST'])
 def webhook():
-    print("🔥 Request received")
-    print("Method:", request.method)
-    print("Args:", request.args)
-
     if request.method == "GET":
-        if request.args.get("hub.verify_token") == VERIFY_TOKEN:
-            return request.args.get("hub.challenge")
-        return "Verification failed", 403
+        mode = request.args.get("hub.mode")
+        token = request.args.get("hub.verify_token")
+        challenge = request.args.get("hub.challenge")
+
+        if mode == "subscribe" and token == VERIFY_TOKEN:
+            return challenge, 200
+        else:
+            return "Forbidden", 403
 
     if request.method == "POST":
         print("📩 Data:", request.json)

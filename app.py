@@ -2,7 +2,8 @@ import os
 import json
 import requests
 from flask import Flask, request, jsonify
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 app = Flask(__name__)
 
@@ -11,7 +12,7 @@ WHATSAPP_TOKEN = os.environ.get("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID")
 GEMINI_KEY = os.environ.get("GEMINI_KEY")
 
-genai.configure(api_key=GEMINI_KEY)
+client = genai.Client(api_key=GEMINI_KEY)
 
 conversation_history = {}
 
@@ -24,6 +25,7 @@ Your job:
 - Be warm, polite and professional like a good receptionist
 - Keep replies short and clear — this is WhatsApp, not email
 - Never reply with long paragraphs — use short lines with line breaks
+- Never use markdown like ** or ## — plain text only
 
 Clinic details:
 - Name: Sharma Clinic
@@ -35,16 +37,16 @@ Clinic details:
 
 When booking appointment always collect:
 1. Patient name
-2. Doctor preference  
+2. Doctor preference
 3. Preferred date and time
 
-After collecting confirm clearly like this:
-Appointment confirmed!
+After collecting all details confirm like this:
+Appointment confirm ho gayi!
 Patient: [name]
 Doctor: [doctor name]
 Date: [date]
 Time: [time]
-Address: 14 Civil Lines, Prayagraj
+Jagah: 14 Civil Lines, Prayagraj
 
 Available slots:
 Morning: 9:30, 10:00, 10:30, 11:00, 11:30, 12:00, 12:30
@@ -74,27 +76,34 @@ def get_ai_reply(user_number, user_message):
     if user_number not in conversation_history:
         conversation_history[user_number] = []
 
-    conversation_history[user_number].append({
-        "role": "user",
-        "parts": [user_message]
-    })
+    conversation_history[user_number].append(
+        types.Content(
+            role="user",
+            parts=[types.Part(text=user_message)]
+        )
+    )
 
     if len(conversation_history[user_number]) > 20:
         conversation_history[user_number] = conversation_history[user_number][-20:]
 
-    model = genai.GenerativeModel(
-        model_name="gemini-2.0-flash",
-        system_instruction=SYSTEM_PROMPT
+    response = client.models.generate_content(
+        model="gemini-2.0-flash",
+        config=types.GenerateContentConfig(
+            system_instruction=SYSTEM_PROMPT,
+            max_output_tokens=500,
+            temperature=0.7,
+        ),
+        contents=conversation_history[user_number]
     )
 
-    chat = model.start_chat(history=conversation_history[user_number][:-1])
-    response = chat.send_message(user_message)
     ai_reply = response.text
 
-    conversation_history[user_number].append({
-        "role": "model",
-        "parts": [ai_reply]
-    })
+    conversation_history[user_number].append(
+        types.Content(
+            role="model",
+            parts=[types.Part(text=ai_reply)]
+        )
+    )
 
     return ai_reply
 

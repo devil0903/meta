@@ -4,6 +4,7 @@ import requests
 from flask import Flask, request, jsonify
 from google import genai
 from google.genai import types
+import google.generativeai as genai
 
 app = Flask(__name__)
 

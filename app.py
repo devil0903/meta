@@ -52,14 +52,13 @@ def get_reply(user_number, user_text):
         state["time"] = user_text
         state["step"] = None
 
-        return f"""Appointment confirm ho gayi!
+       return f"""Appointment confirm ho gayi!
 
 Patient: {state.get('name')}
 Doctor: {state.get('doctor')}
 Date/Time: {state.get('time')}
 
 Jagah: 14 Civil Lines, Prayagraj"""
-
     # General queries (FREE logic)
     if "time" in text or "timing" in text:
         return "Clinic timing:\nMon-Sat 9-1 & 4-8\nSunday 10-1"

@@ -83,7 +83,7 @@ def get_ai_reply(user_number, user_message):
         conversation_history[user_number] = conversation_history[user_number][-20:]
 
     model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
+        model_name="gemini-2.0-flash",
         system_instruction=SYSTEM_PROMPT
     )
 

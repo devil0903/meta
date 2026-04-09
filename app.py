@@ -12,6 +12,7 @@ PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID")
 # Store conversation state
 user_state = {}
 
+
 def send_whatsapp_message(to_number, message):
     url = f"https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages"
     headers = {
@@ -24,9 +25,11 @@ def send_whatsapp_message(to_number, message):
         "type": "text",
         "text": {"body": message}
     }
+
     response = requests.post(url, headers=headers, json=payload)
     print("WhatsApp send status:", response.status_code, response.text)
     return response
+
 
 def get_reply(user_number, user_text):
     text = user_text.lower()
@@ -37,11 +40,17 @@ def get_reply(user_number, user_text):
 
     state = user_state[user_number]
 
-    # Booking flow
+    # ---------------- BOOKING FLOW ---------------- #
+
     if state["step"] == "ask_name":
         state["name"] = user_text
         state["step"] = "ask_doctor"
-        return "Kaunse doctor ke liye appointment chahiye?\n1. Dr Amit (General)\n2. Dr Priya (Gynae)\n3. Dr Rakesh (Ortho)"
+        return (
+            "Kaunse doctor ke liye appointment chahiye?\n"
+            "1. Dr Amit (General)\n"
+            "2. Dr Priya (Gynae)\n"
+            "3. Dr Rakesh (Ortho)"
+        )
 
     elif state["step"] == "ask_doctor":
         state["doctor"] = user_text
@@ -52,14 +61,16 @@ def get_reply(user_number, user_text):
         state["time"] = user_text
         state["step"] = None
 
-       return f"""Appointment confirm ho gayi!
+        return (
+            "Appointment confirm ho gayi!\n\n"
+            f"Patient: {state.get('name')}\n"
+            f"Doctor: {state.get('doctor')}\n"
+            f"Date/Time: {state.get('time')}\n\n"
+            "Jagah: 14 Civil Lines, Prayagraj"
+        )
 
-Patient: {state.get('name')}
-Doctor: {state.get('doctor')}
-Date/Time: {state.get('time')}
+    # ---------------- GENERAL QUERIES ---------------- #
 
-Jagah: 14 Civil Lines, Prayagraj"""
-    # General queries (FREE logic)
     if "time" in text or "timing" in text:
         return "Clinic timing:\nMon-Sat 9-1 & 4-8\nSunday 10-1"
 
@@ -67,7 +78,12 @@ Jagah: 14 Civil Lines, Prayagraj"""
         return "Fees:\nGeneral: 300\nGynae: 500\nOrtho: 400"
 
     elif "doctor" in text:
-        return "Doctors:\nDr Amit (General)\nDr Priya (Gynae)\nDr Rakesh (Ortho)"
+        return (
+            "Doctors available:\n"
+            "Dr Amit (General)\n"
+            "Dr Priya (Gynae)\n"
+            "Dr Rakesh (Ortho)"
+        )
 
     elif "address" in text or "location" in text:
         return "14 Civil Lines, Prayagraj"
@@ -79,9 +95,13 @@ Jagah: 14 Civil Lines, Prayagraj"""
     else:
         return "Samajh nahi aaya.\nCall karein: 9876543210"
 
+
+# ---------------- ROUTES ---------------- #
+
 @app.route('/')
 def home():
     return "ClinicBot running!"
+
 
 @app.route('/webhook', methods=['GET'])
 def verify_webhook():
@@ -92,6 +112,7 @@ def verify_webhook():
     if mode == "subscribe" and token == VERIFY_TOKEN:
         return challenge
     return "Error", 403
+
 
 @app.route('/webhook', methods=['POST'])
 def receive_message():
@@ -119,7 +140,11 @@ def receive_message():
 
         if msg_type == "text":
             user_text = message["text"]["body"]
+            print(f"User: {user_text}")
+
             reply = get_reply(from_number, user_text)
+            print(f"Bot: {reply}")
+
             send_whatsapp_message(from_number, reply)
 
         return jsonify({"status": "ok"}), 200
@@ -127,6 +152,9 @@ def receive_message():
     except Exception as e:
         print("ERROR:", str(e))
         return jsonify({"error": str(e)}), 500
+
+
+# ---------------- MAIN ---------------- #
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))

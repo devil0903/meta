@@ -87,7 +87,7 @@ def get_ai_reply(user_number, user_message):
         conversation_history[user_number] = conversation_history[user_number][-20:]
 
     response = client.models.generate_content(
-        model="gemini-2.0-flash",
+        model="gemini-1.5-flash-latest",
         config=types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
             max_output_tokens=500,

@@ -2,8 +2,7 @@ import os
 import json
 import requests
 from flask import Flask, request, jsonify
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 
 app = Flask(__name__)
 
@@ -12,7 +11,7 @@ WHATSAPP_TOKEN = os.environ.get("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID = os.environ.get("PHONE_NUMBER_ID")
 GEMINI_KEY = os.environ.get("GEMINI_KEY")
 
-client = genai.Client(api_key=GEMINI_KEY)
+genai.configure(api_key=GEMINI_KEY)
 
 conversation_history = {}
 
@@ -76,34 +75,28 @@ def get_ai_reply(user_number, user_message):
     if user_number not in conversation_history:
         conversation_history[user_number] = []
 
-    conversation_history[user_number].append(
-        types.Content(
-            role="user",
-            parts=[types.Part(text=user_message)]
-        )
-    )
+    conversation_history[user_number].append({
+        "role": "user",
+        "parts": [user_message]
+    })
 
     if len(conversation_history[user_number]) > 20:
         conversation_history[user_number] = conversation_history[user_number][-20:]
 
-    response = client.models.generate_content(
-        model="gemini-1.5-flash",
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            max_output_tokens=500,
-            temperature=0.7,
-        ),
-        contents=conversation_history[user_number]
+    model = genai.GenerativeModel(
+        model_name="gemini-1.5-flash",
+        system_instruction=SYSTEM_PROMPT
     )
 
+    chat = model.start_chat(history=conversation_history[user_number][:-1])
+    
+    response = chat.send_message(user_message)
     ai_reply = response.text
 
-    conversation_history[user_number].append(
-        types.Content(
-            role="model",
-            parts=[types.Part(text=ai_reply)]
-        )
-    )
+    conversation_history[user_number].append({
+        "role": "model",
+        "parts": [ai_reply]
+    })
 
     return ai_reply
 

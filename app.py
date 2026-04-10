@@ -72,8 +72,16 @@ def send_whatsapp_message(to_number, message):
     return response
 
 def get_ai_reply(user_number, user_message):
+    # First time? List available models for debugging
     if user_number not in conversation_history:
         conversation_history[user_number] = []
+        try:
+            print("=== AVAILABLE MODELS ===")
+            for m in genai.list_models():
+                if 'generateContent' in m.supported_generation_methods:
+                    print(f"✓ {m.name}")
+        except Exception as e:
+            print(f"Could not list models: {e}")
 
     conversation_history[user_number].append({
         "role": "user",
@@ -83,16 +91,36 @@ def get_ai_reply(user_number, user_message):
     if len(conversation_history[user_number]) > 20:
         conversation_history[user_number] = conversation_history[user_number][-20:]
 
-    model = genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
-        system_instruction=SYSTEM_PROMPT
-    )
-
-    chat = model.start_chat(history=conversation_history[user_number][:-1])
+    # Try different model names in order
+    model_names = [
+        "gemini-1.5-flash",
+        "gemini-1.5-flash-latest", 
+        "gemini-pro",
+        "models/gemini-1.5-flash"
+    ]
     
-    response = chat.send_message(user_message)
-    ai_reply = response.text
+    ai_reply = None
+    
+    for model_name in model_names:
+        try:
+            print(f"Trying model: {model_name}")
+            model = genai.GenerativeModel(
+                model_name=model_name,
+                system_instruction=SYSTEM_PROMPT
+            )
 
+            chat = model.start_chat(history=conversation_history[user_number][:-1])
+            response = chat.send_message(user_message)
+            ai_reply = response.text
+            print(f"✓ SUCCESS with model: {model_name}")
+            break
+        except Exception as e:
+            print(f"✗ Failed with {model_name}: {str(e)[:100]}")
+            continue
+    
+    if not ai_reply:
+        ai_reply = "Sorry, I'm having technical difficulties. Please call clinic: 9876543210"
+    
     conversation_history[user_number].append({
         "role": "model",
         "parts": [ai_reply]
